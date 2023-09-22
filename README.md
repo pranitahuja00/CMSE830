@@ -1,5 +1,5 @@
 # CMSE830
-Small assignments and projects for CMSE830 class
+Homework assignments and projects for CMSE830 class
 
 Link to HW1 streamlit web app: https://cmse830-8qgrqesxwcyuxnnbacnyjq.streamlit.app/
 
