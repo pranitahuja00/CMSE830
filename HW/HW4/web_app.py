@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 st.title("Bank Dataset Analysis")
 
-data = pd.read_csv("bank/bank.csv", delimiter=";", skiprows=0)
+data = pd.read_csv("https://raw.githubusercontent.com/pranitahuja00/CMSE830/main/HW/HW4/bank/bank.csv", delimiter=";", skiprows=0)
 
 if data is not None:
     st.subheader("Data Preview")
