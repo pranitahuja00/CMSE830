@@ -5,8 +5,7 @@ import altair as alt
 
 st.title("Car Price Analysis")
 
-#bank_url = "https://archive.ics.uci.edu/ml/machine-learning-databases/00222/"
-data = pd.read_csv('car_price_train.csv', delimiter=",", skiprows=0)
+data = pd.read_csv('https://raw.githubusercontent.com/pranitahuja00/CMSE830/main/midSem_project/car_price_train.csv', delimiter=",", skiprows=0)
 
 #Balancing the data
 data.drop(data[data['Price']>150000].index, axis=0, inplace=True)
