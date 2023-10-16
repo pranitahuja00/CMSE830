@@ -69,7 +69,7 @@ data_test.reset_index(drop=True, inplace=True)
 
 st.subheader("Check the relationship between attributes and the final price:")
 selected_column1 = st.selectbox("Select attribute", [c for c in data.columns if c not in ['ID', 'Price', 'Production year', 'Model']])
-price_hue = st.selectbox("Select Hue", [c for c in data.columns if c not in ['ID', 'Price', 'Model', 'Prod. year', 'Mileage', 'Levy']])
+price_hue = st.selectbox("Select Hue", [c for c in data.columns if c not in ['ID', 'Price', 'Model', 'Production year', 'Mileage', 'Levy']])
 chart_line_check = st.checkbox("Show Regression Line", key=1)
 if selected_column1:
     chart = alt.Chart(data).mark_circle().encode(x='Price', y=selected_column1, color=price_hue).interactive()
@@ -86,9 +86,11 @@ multiple_attr = st.multiselect('Select attributes to view: ', options=data.colum
 if(car_model != None and car_make != None):
     make_model_price = data[multiple_attr][data['Model']==car_model][data['Manufacturer']==car_make].reset_index(drop=True)
     st.write(make_model_price)
-    st.write('Price according to mileage for ', car_make, ' ', car_model, ':')
+    make_model_price_attr = st.selectbox('Select attribute to chart with price', ['Mileage', 'Engine volume', 'Airbags'])
+    make_model_price_hue = st.selectbox('Select Hue', ['Turbo', 'Color', 'Wheel', 'Drive wheels', 'Fuel type', 'Gear box type', 'Leather interior', 'Airbags'])
+    st.write('Price according to ',make_model_price_attr,' for ', car_make, ' ', car_model, ':')
     make_model_price_chart_line_check = st.checkbox("Show Regression Line", key=2)
-    make_model_price_chart = alt.Chart(data[data['Model']==car_model][data['Manufacturer']==car_make]).mark_circle().encode(x='Price', y='Mileage').interactive()
-    make_model_price_chart_line = make_model_price_chart.transform_regression('Price', 'Mileage').mark_line()
+    make_model_price_chart = alt.Chart(data[data['Model']==car_model][data['Manufacturer']==car_make]).mark_circle().encode(x='Price', y=make_model_price_attr, color=make_model_price_hue).interactive()
+    make_model_price_chart_line = make_model_price_chart.transform_regression('Price', make_model_price_attr).mark_line()
     st.altair_chart(make_model_price_chart+make_model_price_chart_line if make_model_price_chart_line_check else make_model_price_chart, theme="streamlit", use_container_width=True)
 
