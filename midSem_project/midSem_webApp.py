@@ -11,6 +11,7 @@ data = pd.read_csv('https://raw.githubusercontent.com/pranitahuja00/CMSE830/main
 data_test = pd.read_csv('https://raw.githubusercontent.com/pranitahuja00/CMSE830/main/midSem_project/car_price_test.csv', delimiter=",", skiprows=0)
 
 #Converting certain attributes to numeric and cleaning others
+data.rename(columns={'Prod. year': 'Production year'}, inplace=True)
 data['Mileage'] = data['Mileage'].str.replace("km", "")
 data['Mileage'] = data['Mileage'].astype(int)
 
@@ -35,9 +36,11 @@ data = data.drop_duplicates(subset=[a for a in data.columns if a not in ['ID']])
 data.drop(data[data['Price']>200000].index, axis=0, inplace=True)
 data.drop(data[data['Price']<1500].index, axis=0, inplace=True)
 data.drop(data[data['Mileage']>550000].index, axis=0, inplace=True)
+data.drop(data[data['Levy']>8000].index, axis=0, inplace=True)
 data.reset_index(drop=True, inplace=True)
 
 #Doing the same for test data
+data_test.rename(columns={'Prod. year': 'Production year'}, inplace=True)
 data_test['Mileage'] = data_test['Mileage'].str.replace("km", "")
 data_test['Mileage'] = data_test['Mileage'].astype(int)
 
@@ -59,25 +62,33 @@ data_test['Leather interior']=data_test['Leather interior'].map(lambda x:True if
 data_test = data_test.drop_duplicates(subset=[a for a in data_test.columns if a not in ['ID']])
 
 #Balancing the data
-data.drop(data[data['Price']>200000].index, axis=0, inplace=True)
-data.drop(data[data['Price']<1500].index, axis=0, inplace=True)
-data.drop(data[data['Mileage']>550000].index, axis=0, inplace=True)
-data.reset_index(drop=True, inplace=True)
+data_test.drop(data_test[data_test['Price']>200000].index, axis=0, inplace=True)
+data_test.drop(data_test[data_test['Price']<1500].index, axis=0, inplace=True)
+data_test.drop(data_test[data_test['Mileage']>550000].index, axis=0, inplace=True)
+data_test.reset_index(drop=True, inplace=True)
 
-if data is not None:
-    st.subheader("Check the effect of each attribute on the final price:")
-    selected_column1 = st.selectbox("Select attribute", [c for c in data.columns if c not in ['ID', 'Price', 'Model', 'Prod. year']])
-    if selected_column1:
-        chart = alt.Chart(data).mark_circle().encode(x='Price', y=selected_column1).interactive()
-        st.altair_chart(chart, theme="streamlit", use_container_width=True)
+st.subheader("Check the relationship between attributes and the final price:")
+selected_column1 = st.selectbox("Select attribute", [c for c in data.columns if c not in ['ID', 'Price', 'Production year', 'Model']])
+price_hue = st.selectbox("Select Hue", [c for c in data.columns if c not in ['ID', 'Price', 'Model', 'Prod. year', 'Mileage', 'Levy']])
+chart_line_check = st.checkbox("Show Regression Line", key=1)
+if selected_column1:
+    chart = alt.Chart(data).mark_circle().encode(x='Price', y=selected_column1, color=price_hue).interactive()
+    chart_line = chart.transform_regression('Price', selected_column1).mark_line()
+    st.altair_chart(chart+chart_line if chart_line_check else chart, theme="streamlit", use_container_width=True)
 
-    st.subheader("Check car attributes according to manufacturer and model:")
-    car_make = None
-    car_model = None
-    car_make = st.selectbox("Select manufacturer", [m for m in data['Manufacturer'].unique()])
-    car_model = st.selectbox("Select model", [m for m in data['Model'][data['Manufacturer']==car_make].unique()])
-    multiple_attr = st.multiselect('Select attributes to view: ', options=data.columns)
+st.subheader("Check price and attributes according to manufacturer and model:")
+car_make = None
+car_model = None
+car_make = st.selectbox("Select manufacturer", [m for m in data['Manufacturer'].unique()], placeholder='Select Manufacturer')
+car_model = st.selectbox("Select model", [m for m in data['Model'][data['Manufacturer']==car_make].unique()], placeholder='Select Model')
+multiple_attr = st.multiselect('Select attributes to view: ', options=data.columns, default=['Price', 'Mileage'])
 
-    if(car_model != None and car_make != None):
-        make_model_price = data[multiple_attr][data['Model']==car_model][data['Manufacturer']==car_make].reset_index(drop=True)
-        st.write(make_model_price)
+if(car_model != None and car_make != None):
+    make_model_price = data[multiple_attr][data['Model']==car_model][data['Manufacturer']==car_make].reset_index(drop=True)
+    st.write(make_model_price)
+    st.write('Price according to mileage for ', car_make, ' ', car_model, ':')
+    make_model_price_chart_line_check = st.checkbox("Show Regression Line", key=2)
+    make_model_price_chart = alt.Chart(data[data['Model']==car_model][data['Manufacturer']==car_make]).mark_circle().encode(x='Price', y='Mileage').interactive()
+    make_model_price_chart_line = make_model_price_chart.transform_regression('Price', 'Mileage').mark_line()
+    st.altair_chart(make_model_price_chart+make_model_price_chart_line if make_model_price_chart_line_check else make_model_price_chart, theme="streamlit", use_container_width=True)
+
