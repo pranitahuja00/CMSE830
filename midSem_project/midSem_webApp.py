@@ -66,17 +66,6 @@ for i in ['robot','Continuously variable transmission (CVT)','Electronic with 1 
 for i in ['ventilated disc','Disc', 'Disc ventilated','Disc composite, ventilated', 'Disc composite','ventilated ceramic', 'ventilated disc, perforated','Disk ceramic']:
     cars['brakes'].replace(i,'disc', inplace=True)
 cars['brakes'].replace('N/a', np.nan, inplace=True)
-cars['length'] = cars['length'].replace(',','.', inplace=True)
-cars['width'] = cars['width'].replace(',','.', inplace=True)
-cars['height'] = cars['height'].replace(',','.', inplace=True)
-cars['wheelbase'] = cars['wheelbase'].replace(',','.', inplace=True)
-cars['front_track'] = cars['front_track'].replace(',','.', inplace=True)
-cars['rear_track'] = cars['rear_track'].replace(',','.', inplace=True)
-cars['ground_clearance'] = cars['ground_clearance'].replace(',','.', inplace=True)
-cars['trunk_capacity'] = cars['trunk_capacity'].replace(',','.', inplace=True)
-cars['torque'] = cars['torque'].replace(',','.', inplace=True)
-cars['displacement'] = cars['displacement'].replace(',','.', inplace=True)
-cars['top_speed'] = cars['top_speed'].replace(',','.', inplace=True)
 
 st.write("After removing some columns, I created a few features such as 'bs_ratio'. Bore-Stroke ratio ('bs_ratio') is the ratio of the piston diameter and the stroke length. The dataset had two columns for the piston diameter and stroke length, so I calculated the ratio as that is more useful and dropped the bore and stroke columns.")
 st.write("A preview of the mew dataset: -", cars.head())
