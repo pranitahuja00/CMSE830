@@ -28,9 +28,9 @@ st.write("First, I checked for missing data and dropped all features which were 
 st.write('The following columns were dropped for missing majority of the data: -',dropped_cols)
 
 #Dropping some more useless columns
-cars.drop(['id_trim', 'Year_to', 'number_of_seats', 'minimum_trunk_capacity_l', 'full_weight_kg', 'turnover_of_maximum_torque_rpm', 'engine_hp_rpm', 'back_suspension', 'rear_brakes', 'city_fuel_per_100km_l', 'highway_fuel_per_100km_l', 'fuel_grade'], axis=1, inplace=True)
+cars.drop(['id_trim', 'year_to', 'number_of_seats', 'minimum_trunk_capacity_l', 'full_weight_kg', 'turnover_of_maximum_torque_rpm', 'engine_hp_rpm', 'back_suspension', 'rear_brakes', 'city_fuel_per_100km_l', 'highway_fuel_per_100km_l', 'fuel_grade'], axis=1, inplace=True)
 #Renaming
-cars.rename(columns={'Modle':'Model', 'length_mm':'length', 'width_mm':'width', 'height_mm': 'height', 'wheelbase_mm':'wheelbase', 'front_track_mm':'front_track', 'rear_track_mm':'rear_track', 'curb_weight_kg':'weight', 'ground_clearance_mm':'ground_clearance', 'max_trunk_capacity_l':'trunk_capacity', 'maximum_torque_n_m':'torque', 'number_of_cylinders':'cylinders', 'engine_type':'fuel', 'presence_of_intercooler':'intercooler', 'capacity_cm3':'displacement', 'engine_hp':'horsepower', 'turning_circle_m':'turning_radius', 'mixed_fuel_consumption_per_100_km_l':'avg_kmpl', 'fuel_tank_capacity_l':'fuel_capacity', 'acceleration_0_100_km/h_s':'acceleration', 'max_speed_km_per_h':'top_speed', 'front_brakes':'brakes', 'front_suspension':'suspension', 'number_of_gears':'gears', 'Year_from':'year'}, inplace=True)
+cars.rename(columns={'Modle':'Model', 'length_mm':'length', 'width_mm':'width', 'height_mm': 'height', 'wheelbase_mm':'wheelbase', 'front_track_mm':'front_track', 'rear_track_mm':'rear_track', 'curb_weight_kg':'weight', 'ground_clearance_mm':'ground_clearance', 'max_trunk_capacity_l':'trunk_capacity', 'maximum_torque_n_m':'torque', 'number_of_cylinders':'cylinders', 'engine_type':'fuel', 'presence_of_intercooler':'intercooler', 'capacity_cm3':'displacement', 'engine_hp':'horsepower', 'turning_circle_m':'turning_radius', 'mixed_fuel_consumption_per_100_km_l':'avg_kmpl', 'fuel_tank_capacity_l':'fuel_capacity', 'acceleration_0_100_km/h_s':'acceleration', 'max_speed_km_per_h':'top_speed', 'front_brakes':'brakes', 'front_suspension':'suspension', 'number_of_gears':'gears', 'year_from':'year'}, inplace=True)
 # Feature Engineering
 cars['bs_ratio'] = cars['cylinder_bore_mm']/cars['stroke_cycle_mm']
 cars.drop(['cylinder_bore_mm', 'stroke_cycle_mm'], axis=1, inplace=True)
@@ -49,7 +49,7 @@ for i in ['GASOLINE, ELECTRIC', 'DIESEL, HYBRID']:
 cars['fuel'].replace('LIQUEFIED COAL HYDROGEN GASES', 'HYDROGEN', inplace=True)
 for i in ['Multi-point fuel injection', 'Injector','direct injection', 'Monoinjection', 'Common Rail','distributed injection (multipoint)', 'direct injection (direct)','Central injection (single-point or single-point)','combined injection (direct-distributed)', 'Central injection','the engine is not separated by the combustion chamber (direct fuel injection)']:
     cars['injection_type'].replace(i, 'Fuel Injector', inplace=True) 
-cars['Body_type'].replace('Hatchback 3 doors', 'Hatchback', inplace=True)
+cars['body_type'].replace('Hatchback 3 doors', 'Hatchback', inplace=True)
 cars['cylinder_layout']=cars['cylinder_layout'].str.upper()
 cars['cylinder_layout'].replace('-', np.nan, inplace=True)
 cars['cylinder_layout'].replace('V-TYPE WITH SMALL ANGLE', 'V-TYPE', inplace=True)
@@ -72,7 +72,7 @@ st.write("A preview of the mew dataset: -", cars.head())
 st.write("New shape: ", cars.shape)
 
 st.write("Categorzing the attributes: -")
-categorical_attr = ['Make', 'Model', 'Generation', 'Series', 'Trim', 'Body_type', 'injection_type', 'cylinder_layout', 'fuel', 'boost_type', 'intercooler', 'drive_wheels', 'transmission', 'brakes', 'suspension']
+categorical_attr = ['Make', 'Model', 'Generation', 'Series', 'Trim', 'body_type', 'injection_type', 'cylinder_layout', 'fuel', 'boost_type', 'intercooler', 'drive_wheels', 'transmission', 'brakes', 'suspension']
 continuous_attr = ['length', 'width', 'height', 'wheelbase', 'front_track', 'rear_track','weight', 'ground_clearance', 'trunk_capacity', 'torque','displacement','horsepower','turning_radius', 'avg_kmpl', 'fuel_capacity', 'acceleration', 'top_speed','bs_ratio']
 discrete_attr = ['year', 'cylinders', 'valves_per_cylinder', 'gears']
 col1, col2, col3 = st.columns(3)
@@ -131,3 +131,21 @@ kmpl_year_chart_line = kmpl_year_chart.transform_regression('year', 'avg_kmpl').
 st.altair_chart(kmpl_year_chart+kmpl_year_chart_line, use_container_width=True)
 st.write("According to this dataset the fuel economy of cars has gotten worse over time and is on the decline.")
 
+cars['displacement']=cars['displacement'].astype(float)
+disp_year_chart = alt.Chart(cars).mark_circle().encode(
+    x=alt.X('year', scale=alt.Scale(domain=[1935, 2021])),
+    y='displacement',
+).interactive()
+disp_year_chart_line = disp_year_chart.transform_regression('year', 'displacement').mark_line()
+st.altair_chart(disp_year_chart+disp_year_chart_line, use_container_width=True)
+st.write("Average displacement of cars has gone down along the years as we move forward to more fuel efficient vehicles which can give better performance with a smaller engine.")
+
+
+st.subheader("Check the relationship between attributes:")
+selected_column1 = st.selectbox("Select attribute", continuous_attr, key=2)
+selected_column2 = st.selectbox("Select attribute", continuous_attr, key=3)
+chart_line_check = st.checkbox("Show Regression Line", key=1)
+if selected_column1:
+    chart2 = alt.Chart(cars).mark_circle().encode(x=selected_column1, y=selected_column2).interactive()
+    chart_line2 = chart2.transform_regression(selected_column1, selected_column2).mark_line()
+    st.altair_chart(chart2+chart_line2 if chart_line_check else chart2, theme="streamlit", use_container_width=True)
