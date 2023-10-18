@@ -2,95 +2,143 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import altair as alt
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import LabelEncoder
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-st.title("Car Price Analysis")
+st.title("Car Spec. Data 1935 - 2020")
 
-data = pd.read_csv('https://raw.githubusercontent.com/pranitahuja00/CMSE830/main/midSem_project/car_price_train.csv', delimiter=",", skiprows=0)
-data_test = pd.read_csv('https://raw.githubusercontent.com/pranitahuja00/CMSE830/main/midSem_project/car_price_test.csv', delimiter=",", skiprows=0)
+cars = pd.read_csv('https://raw.githubusercontent.com/pranitahuja00/CMSE830/main/midSem_project/Car%20Dataset%201945-2020.csv', delimiter=",", skiprows=0)
 
-#Converting certain attributes to numeric and cleaning others
-data.rename(columns={'Prod. year': 'Production year'}, inplace=True)
-data['Mileage'] = data['Mileage'].str.replace("km", "")
-data['Mileage'] = data['Mileage'].astype(int)
+st.subheader("About the data:")
+st.write('This dataset contains a comprehensive list of cars manufactured from 1935 to 2020. It includes details such as make, model, year, engine size, fuel type, transmission type, drivetrain, body style, number of doors, and many more specifications. The purpose of this dataset is to provide a comprehensive list of car specifications that can be used for various research and analysis purposes, such as market and trend analysis.')
+st.write('Raw Data rows/ records: ', cars.shape[0])
+st.write('Raw Data columns/ features: ', cars.shape[1])
 
-data['Levy'] = data['Levy'].map(lambda x:0 if x== '-' else x)
-data['Levy'] = data['Levy'].astype(float)
+#Dropping columns having more than 50% missing values
+dropped_cols = {'Columns':[], 'Missing_perc':[]}
+for i in cars.columns:
+    if(cars[i].isna().sum()/cars.shape[0]>0.5):
+        if(i not in ['boost_type', 'presence_of_intercooler']):
+            dropped_cols['Columns'].append(i)
+            dropped_cols['Missing_perc'].append(cars[i].isna().sum()/cars.shape[0])
+            cars.drop(i, axis=1, inplace=True)
+dropped_cols = pd.DataFrame(dropped_cols)
 
-data['Doors']=data['Doors'].str.replace('04-May','4')
-data['Doors']=data['Doors'].str.replace('02-May','2')
-data['Doors']=data['Doors'].str.replace('02-Mar','2')
-data['Doors']=data['Doors'].str.replace('>5','5')
-data['Doors'] = data['Doors'].astype(float)
+st.write("First, I checked for missing data and dropped all features which were missing values for more than 50 percent of the total records and didn't have much use for us.")
+st.write('The following columns were dropped for missing majority of the data: -',dropped_cols)
 
-data['Turbo']=data['Engine volume'].str.contains('Turbo')
-data['Engine volume']=data['Engine volume'].str.replace('Turbo','')
-data['Engine volume']= data['Engine volume'].astype('float')
+#Dropping some more useless columns
+cars.drop(['id_trim', 'Year_to', 'number_of_seats', 'minimum_trunk_capacity_l', 'full_weight_kg', 'turnover_of_maximum_torque_rpm', 'engine_hp_rpm', 'back_suspension', 'rear_brakes', 'city_fuel_per_100km_l', 'highway_fuel_per_100km_l', 'fuel_grade'], axis=1, inplace=True)
+#Renaming
+cars.rename(columns={'Modle':'Model', 'length_mm':'length', 'width_mm':'width', 'height_mm': 'height', 'wheelbase_mm':'wheelbase', 'front_track_mm':'front_track', 'rear_track_mm':'rear_track', 'curb_weight_kg':'weight', 'ground_clearance_mm':'ground_clearance', 'max_trunk_capacity_l':'trunk_capacity', 'maximum_torque_n_m':'torque', 'number_of_cylinders':'cylinders', 'engine_type':'fuel', 'presence_of_intercooler':'intercooler', 'capacity_cm3':'displacement', 'engine_hp':'horsepower', 'turning_circle_m':'turning_radius', 'mixed_fuel_consumption_per_100_km_l':'avg_kmpl', 'fuel_tank_capacity_l':'fuel_capacity', 'acceleration_0_100_km/h_s':'acceleration', 'max_speed_km_per_h':'top_speed', 'front_brakes':'brakes', 'front_suspension':'suspension', 'number_of_gears':'gears', 'Year_from':'year'}, inplace=True)
+# Feature Engineering
+cars['bs_ratio'] = cars['cylinder_bore_mm']/cars['stroke_cycle_mm']
+cars.drop(['cylinder_bore_mm', 'stroke_cycle_mm'], axis=1, inplace=True)
 
-data['Leather interior']=data['Leather interior'].map(lambda x:True if x== 'Yes' else False)
+#Cleaning
+cars['boost_type'].replace('none', 'Naturally Asp', inplace=True)
+cars['boost_type'].replace('Intercooler', 'Turbo', inplace=True)
+cars['boost_type'].fillna('Naturally Asp', inplace=True)
+cars['intercooler'].fillna('No', inplace=True)
+cars['intercooler'].replace('Present', 'Yes', inplace=True)
+cars['fuel']=cars['fuel'].str.upper()
+for i in ['GASOLINE', 'GASOLINE, GAS', 'GAS']:
+    cars['fuel'].replace(i, 'PETROL', inplace=True)
+for i in ['GASOLINE, ELECTRIC', 'DIESEL, HYBRID']:
+    cars['fuel'].replace(i, 'HYBRID', inplace=True)
+cars['fuel'].replace('LIQUEFIED COAL HYDROGEN GASES', 'HYDROGEN', inplace=True)
+for i in ['Multi-point fuel injection', 'Injector','direct injection', 'Monoinjection', 'Common Rail','distributed injection (multipoint)', 'direct injection (direct)','Central injection (single-point or single-point)','combined injection (direct-distributed)', 'Central injection','the engine is not separated by the combustion chamber (direct fuel injection)']:
+    cars['injection_type'].replace(i, 'Fuel Injector', inplace=True) 
+cars['Body_type'].replace('Hatchback 3 doors', 'Hatchback', inplace=True)
+cars['cylinder_layout']=cars['cylinder_layout'].str.upper()
+cars['cylinder_layout'].replace('-', np.nan, inplace=True)
+cars['cylinder_layout'].replace('V-TYPE WITH SMALL ANGLE', 'V-TYPE', inplace=True)
+cars['cylinder_layout'].replace('ROTARY-PISTON', 'ROTOR', inplace=True)
+cars['cylinder_layout'].replace('ROTARY', 'ROTOR', inplace=True)
+cars['drive_wheels'].replace('Rear wheel drive', 'RWD', inplace=True)
+cars['drive_wheels'].replace('Front wheel drive', 'FWD', inplace=True)
+cars['drive_wheels'].replace('All wheel drive (AWD)', 'AWD', inplace=True)
+cars['drive_wheels'].replace('Four wheel drive (4WD)', '4WD', inplace=True)
+cars['drive_wheels'].replace('full', '4WD', inplace=True)
+cars['drive_wheels'].replace('Constant all wheel drive', '4WD', inplace=True)
+for i in ['robot','Continuously variable transmission (CVT)','Electronic with 1 clutch', 'Electronic with 2 clutch']:
+    cars['transmission'].replace(i, 'Automatic', inplace=True)
+for i in ['ventilated disc','Disc', 'Disc ventilated','Disc composite, ventilated', 'Disc composite','ventilated ceramic', 'ventilated disc, perforated','Disk ceramic']:
+    cars['brakes'].replace(i,'disc', inplace=True)
+cars['brakes'].replace('N/a', np.nan, inplace=True)
+cars['length'] = cars['length'].replace(',','.', inplace=True)
+cars['width'] = cars['width'].replace(',','.', inplace=True)
+cars['height'] = cars['height'].replace(',','.', inplace=True)
+cars['wheelbase'] = cars['wheelbase'].replace(',','.', inplace=True)
+cars['front_track'] = cars['front_track'].replace(',','.', inplace=True)
+cars['rear_track'] = cars['rear_track'].replace(',','.', inplace=True)
+cars['ground_clearance'] = cars['ground_clearance'].replace(',','.', inplace=True)
+cars['trunk_capacity'] = cars['trunk_capacity'].replace(',','.', inplace=True)
+cars['torque'] = cars['torque'].replace(',','.', inplace=True)
+cars['displacement'] = cars['displacement'].replace(',','.', inplace=True)
+cars['top_speed'] = cars['top_speed'].replace(',','.', inplace=True)
 
-data = data.drop_duplicates(subset=[a for a in data.columns if a not in ['ID']])
+st.write("After removing some columns, I created a few features such as 'bs_ratio'. Bore-Stroke ratio ('bs_ratio') is the ratio of the piston diameter and the stroke length. The dataset had two columns for the piston diameter and stroke length, so I calculated the ratio as that is more useful and dropped the bore and stroke columns.")
+st.write("A preview of the mew dataset: -", cars.head())
+st.write("New shape: ", cars.shape)
 
-#Balancing the data
-data.drop(data[data['Price']>200000].index, axis=0, inplace=True)
-data.drop(data[data['Price']<1500].index, axis=0, inplace=True)
-data.drop(data[data['Mileage']>550000].index, axis=0, inplace=True)
-data.drop(data[data['Levy']>8000].index, axis=0, inplace=True)
-data.reset_index(drop=True, inplace=True)
+st.write("Categorzing the attributes: -")
+categorical_attr = ['Make', 'Model', 'Generation', 'Series', 'Trim', 'Body_type', 'injection_type', 'cylinder_layout', 'fuel', 'boost_type', 'intercooler', 'drive_wheels', 'transmission', 'brakes', 'suspension']
+continuous_attr = ['length', 'width', 'height', 'wheelbase', 'front_track', 'rear_track','weight', 'ground_clearance', 'trunk_capacity', 'torque','displacement','horsepower','turning_radius', 'avg_kmpl', 'fuel_capacity', 'acceleration', 'top_speed','bs_ratio']
+discrete_attr = ['year', 'cylinders', 'valves_per_cylinder', 'gears']
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.write('Categorical: -',categorical_attr)
 
-#Doing the same for test data
-data_test.rename(columns={'Prod. year': 'Production year'}, inplace=True)
-data_test['Mileage'] = data_test['Mileage'].str.replace("km", "")
-data_test['Mileage'] = data_test['Mileage'].astype(int)
+with col2:
+   st.write('Continuous: -',continuous_attr)
 
-data_test['Levy'] = data_test['Levy'].map(lambda x:0 if x== '-' else x)
-data_test['Levy'] = data_test['Levy'].astype(float)
+with col3:
+   st.write('Discrete: -',discrete_attr)
 
-data_test['Doors']=data_test['Doors'].str.replace('04-May','4')
-data_test['Doors']=data_test['Doors'].str.replace('02-May','2')
-data_test['Doors']=data_test['Doors'].str.replace('02-Mar','2')
-data_test['Doors']=data_test['Doors'].str.replace('>5','5')
-data_test['Doors'] = data_test['Doors'].astype(float)
+st.subheader("Visualizing and studying data trends and relationships:")
 
-data_test['Turbo']=data_test['Engine volume'].str.contains('Turbo')
-data_test['Engine volume']=data_test['Engine volume'].str.replace('Turbo','')
-data_test['Engine volume']= data_test['Engine volume'].astype('float')
+counts = cars['year'].value_counts().reset_index()
+counts.columns = ['year', 'Count']
+counts['year']=counts['year'].astype(int)
 
-data_test['Leather interior']=data_test['Leather interior'].map(lambda x:True if x== 'Yes' else False)
+# Sort the DataFrame by 'Value' if needed
+counts = counts.sort_values(by='year')
 
-data_test = data_test.drop_duplicates(subset=[a for a in data_test.columns if a not in ['ID']])
+st.write('Distribution of the car records over the years:')
+chart=alt.Chart(counts).mark_line().encode(
+    x='year',
+    y='Count'
+).interactive()
+st.altair_chart(chart, use_container_width=True)
+st.write("We can see an upward trend along the years till 2008 which was the peak followed by a decline.")
 
-#Balancing the data
-data_test.drop(data_test[data_test['Price']>200000].index, axis=0, inplace=True)
-data_test.drop(data_test[data_test['Price']<1500].index, axis=0, inplace=True)
-data_test.drop(data_test[data_test['Mileage']>550000].index, axis=0, inplace=True)
-data_test.reset_index(drop=True, inplace=True)
+st.write("Let's check some trends over the years: ")
+st.write("Horsepower: ")
+cars.drop(cars[cars['horsepower']>1000].index, axis=0, inplace=True)
+hp_year_chart = alt.Chart(cars).mark_circle().encode(
+    x=alt.X('year', scale=alt.Scale(domain=[1935, 2021])),
+    y='horsepower',
+).interactive()
+hp_year_chart_line = hp_year_chart.transform_regression('year', 'horsepower').mark_line()
+st.altair_chart(hp_year_chart+hp_year_chart_line, use_container_width=True)
+st.write("The fit line shows a slight positive trend that's because of the dip in horsepower figures after the 1970s started.")
 
-st.subheader("Check the relationship between attributes and the final price:")
-selected_column1 = st.selectbox("Select attribute", [c for c in data.columns if c not in ['ID', 'Price', 'Production year', 'Model']])
-price_hue = st.selectbox("Select Hue", [c for c in data.columns if c not in ['ID', 'Price', 'Model', 'Production year', 'Mileage', 'Levy']])
-chart_line_check = st.checkbox("Show Regression Line", key=1)
-if selected_column1:
-    chart = alt.Chart(data).mark_circle().encode(x='Price', y=selected_column1, color=price_hue).interactive()
-    chart_line = chart.transform_regression('Price', selected_column1).mark_line()
-    st.altair_chart(chart+chart_line if chart_line_check else chart, theme="streamlit", use_container_width=True)
+st.write("Acceleration: ")
+acc_year_chart = alt.Chart(cars).mark_circle().encode(
+    x=alt.X('year', scale=alt.Scale(domain=[1935, 2021])),
+    y='acceleration',
+).interactive()
+acc_year_chart_line = acc_year_chart.transform_regression('year', 'acceleration').mark_line()
+st.altair_chart(acc_year_chart+acc_year_chart_line, use_container_width=True)
+st.write("We can see that with time average time to accelerate from 0-100 kmph has gone down due to advances in engineering.")
 
-st.subheader("Check price and attributes according to manufacturer and model:")
-car_make = None
-car_model = None
-car_make = st.selectbox("Select manufacturer", [m for m in data['Manufacturer'].unique()], placeholder='Select Manufacturer')
-car_model = st.selectbox("Select model", [m for m in data['Model'][data['Manufacturer']==car_make].unique()], placeholder='Select Model')
-multiple_attr = st.multiselect('Select attributes to view: ', options=data.columns, default=['Price', 'Mileage'])
-
-if(car_model != None and car_make != None):
-    make_model_price = data[multiple_attr][data['Model']==car_model][data['Manufacturer']==car_make].reset_index(drop=True)
-    st.write(make_model_price)
-    make_model_price_attr = st.selectbox('Select attribute to chart with price', ['Mileage', 'Engine volume', 'Airbags'])
-    make_model_price_hue = st.selectbox('Select Hue', ['Turbo', 'Color', 'Wheel', 'Drive wheels', 'Fuel type', 'Gear box type', 'Leather interior', 'Airbags'])
-    st.write('Price according to ',make_model_price_attr,' for ', car_make, ' ', car_model, ':')
-    make_model_price_chart_line_check = st.checkbox("Show Regression Line", key=2)
-    make_model_price_chart = alt.Chart(data[data['Model']==car_model][data['Manufacturer']==car_make]).mark_circle().encode(x='Price', y=make_model_price_attr, color=make_model_price_hue).interactive()
-    make_model_price_chart_line = make_model_price_chart.transform_regression('Price', make_model_price_attr).mark_line()
-    st.altair_chart(make_model_price_chart+make_model_price_chart_line if make_model_price_chart_line_check else make_model_price_chart, theme="streamlit", use_container_width=True)
+st.write("Fuel Economy:")
+kmpl_year_chart = alt.Chart(cars).mark_circle().encode(
+    x=alt.X('year', scale=alt.Scale(domain=[1935, 2021])),
+    y='avg_kmpl',
+).interactive()
+kmpl_year_chart_line = kmpl_year_chart.transform_regression('year', 'avg_kmpl').mark_line()
+st.altair_chart(kmpl_year_chart+kmpl_year_chart_line, use_container_width=True)
+st.write("According to this dataset the fuel economy of cars has gotten worse over time and is on the decline.")
 
